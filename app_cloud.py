@@ -1,4 +1,3 @@
-import pandas as pd
 import random
 import time
 import os
@@ -11,7 +10,13 @@ app = Flask(__name__)
 CORS(app)
 
 latest_signal = {
-    "status": "Engine Iniciada!",
+    "Asset": "AGUARDANDO...",
+    "Direction": "---",
+    "Expiration": "---",
+    "Price": 0.0,
+    "Confidence": "CALIBRANDO",
+    "rsi": 50.0,
+    "trend": "NEUTRAL",
     "Timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 }
 
@@ -52,7 +57,7 @@ def generate_pro_signal():
             expiration = random.choice([1, 5]) # Foco em operações rápidas
             
             latest_signal = {
-                'Timestamp': datetime.now().strftime('%H:%M:%S'),
+                'Timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'Asset': asset,
                 'Direction': direction,
                 'Expiration': f'{expiration} min',
@@ -73,7 +78,9 @@ def generate_pro_signal():
 def get_latest():
     return jsonify(latest_signal)
 
+# Inicia a geração de sinais automaticamente (Funciona no Gunicorn/Render)
+threading.Thread(target=generate_pro_signal, daemon=True).start()
+
 if __name__ == '__main__':
-    threading.Thread(target=generate_pro_signal, daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
