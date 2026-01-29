@@ -1,10 +1,10 @@
-import random
-import os
+mport os
 import threading
-from datetime import datetime
+import time
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-
+import random
+from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
@@ -65,7 +65,7 @@ def generate_pro_signal():
 
 # Iniciamos a geração de sinais (Thread Global para Gunicorn)
 thread = threading.Thread(target=generate_pro_signal, daemon=True)
-thread.start()
+print('🚀 Starting Signal Thread...', flush=True)
 
 @app.route('/latest', methods=['GET'])
 def get_latest():
@@ -79,5 +79,6 @@ def health_check():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
