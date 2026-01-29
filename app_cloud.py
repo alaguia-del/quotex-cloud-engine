@@ -1,13 +1,15 @@
-mport os
+import os
 import threading
 import time
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import random
 from datetime import datetime
+
 app = Flask(__name__)
 CORS(app)
 
+# Armazenamento global de sinais
 latest_signal = {
     'Timestamp': datetime.now().strftime('%H:%M:%S'),
     'Asset': 'CALIBRANDO',
@@ -24,7 +26,8 @@ latest_signal = {
 ASSETS = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD', 'ETHUSD', 'AUDUSD']
 
 def get_signal_quality(rsi, trend):
-    if (rsi < 30 and trend == 'UP') or (rsi > 70 and trend == 'DOWN'): return "ALTA (95%)"
+    if (rsi < 30 and trend == 'UP') or (rsi > 70 and trend == 'DOWN'): 
+        return "ALTA (95%)"
     return "MÉDIA (85%)"
 
 def generate_pro_signal():
@@ -64,21 +67,20 @@ def generate_pro_signal():
             time.sleep(10)
 
 # Iniciamos a geração de sinais (Thread Global para Gunicorn)
-thread = threading.Thread(target=generate_pro_signal, daemon=True)
 print('🚀 Starting Signal Thread...', flush=True)
+thread = threading.Thread(target=generate_pro_signal, daemon=True)
+thread.start()
 
 @app.route('/latest', methods=['GET'])
 def get_latest():
-    print(f"Request: {latest_signal['Asset']} | Type: {latest_signal['type']}", flush=True)
+    # Log para confirmar que o endpoint está sendo acessado
+    print(f"📡 Request recebido | Motor: {latest_signal['Asset']} ({latest_signal['type']})", flush=True)
     return jsonify(latest_signal)
 
 @app.route('/', methods=['GET'])
 def health_check():
-    return "Quotex Cloud Engine is Live!"
+    return "Quotex Cloud Engine is Live and Running!"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-
-
