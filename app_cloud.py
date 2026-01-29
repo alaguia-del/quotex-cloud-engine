@@ -9,7 +9,7 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# Armazenamento global (DICIONÁRIO MUTÁVEL)
+# Armazenamento global
 latest_signal = {
     'Timestamp': datetime.now().strftime('%H:%M:%S'),
     'Asset': 'CALIBRANDO',
@@ -23,14 +23,12 @@ latest_signal = {
 }
 
 ASSETS = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD', 'ETHUSD', 'AUDUSD']
-
-def get_signal_quality(rsi, trend):
-    if (rsi < 30 and trend == 'UP') or (rsi > 70 and trend == 'DOWN'): return "ALTA (95%)"
-    return "MÉDIA (85%)"
+motor_started = False
+lock = threading.Lock()
 
 def generate_pro_signal():
     global latest_signal
-    print("🚀 MOTOR INTERNO INICIADO...", flush=True)
+    print(f"🚀 [PID {os.getpid()}] MOTOR INICIADO", flush=True)
     while True:
         try:
             asset = random.choice(ASSETS)
@@ -39,21 +37,18 @@ def generate_pro_signal():
             
             if (rsi < 40 and trend == 'UP') or (rsi > 60 and trend == 'DOWN'):
                 direction = 'BUY' if trend == 'UP' else 'SELL'
-                quality = get_signal_quality(rsi, trend)
-                
-                # ATUALIZAÇÃO EM VEZ DE REATRIBUIÇÃO (Melhor para Threads)
                 latest_signal.update({
                     'Timestamp': datetime.now().strftime('%H:%M:%S'),
                     'Asset': asset,
                     'Direction': direction,
                     'Expiration': '1 min',
                     'Price': round(random.uniform(1.0, 1.25) if 'USD' in asset else random.uniform(20000, 60000), 5),
-                    'Confidence': quality,
+                    'Confidence': "ALTA (95%)" if abs(rsi-50)>20 else "MÉDIA (85%)",
                     'rsi': round(rsi, 2),
                     'trend': trend,
                     'type': 'PRO_STRATEGY'
                 })
-                print(f"🔥 SINAL GERADO: {asset} [{direction}]", flush=True)
+                print(f"🔥 [PID {os.getpid()}] SINAL: {asset}", flush=True)
                 time.sleep(30)
             else:
                 time.sleep(10)
@@ -61,18 +56,22 @@ def generate_pro_signal():
             print(f"❌ ERRO: {e}", flush=True)
             time.sleep(10)
 
-# Início do Thread
-threading.Thread(target=generate_pro_signal, daemon=True).start()
-
 @app.route('/latest', methods=['GET'])
 def get_latest():
-    # Log para ver o que o Flask está lendo
-    print(f"📡 API lendo: {latest_signal['Asset']} | {latest_signal['Timestamp']}", flush=True)
+    global motor_started
+    with lock:
+        if not motor_started:
+            t = threading.Thread(target=generate_pro_signal, daemon=True)
+            t.start()
+            motor_started = True
+    
+    print(f"DEBUG: Process ID {os.getpid()} | Thread: {threading.active_count()}", flush=True)
+    print(f"📡 Request PID {os.getpid()} | Asset: {latest_signal['Asset']}", flush=True)
     return jsonify(latest_signal)
 
 @app.route('/', methods=['GET'])
 def health():
-    return f"Engine Alpha Live - {latest_signal['Timestamp']}"
+    return f"Live PID {os.getpid()}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
